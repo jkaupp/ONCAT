@@ -481,7 +481,7 @@ oncat_subject_heatmap <- function(df, v_subject) {
     mutate(variable = str_wrap(str_to_title(variable), 8)) %>% 
     filter(subject == v_subject)
   
-  ggplot(data, aes(y = `cognitive process`, x = transfer, fill = n)) +
+ ggplot(data, aes(y = `cognitive process`, x = transfer, fill = n)) +
     geom_tile(color = "white", size = 0.5) +
     facet_grid(variable ~ type, switch = "y", drop =FALSE) +
     scale_y_continuous(breaks = c(1:6)) +
@@ -494,32 +494,69 @@ oncat_subject_heatmap <- function(df, v_subject) {
       strip.text.y = element_text(angle = 180),
       axis.title.y = element_text(angle = 0),
       axis.ticks=element_blank(),
-      axis.text=element_text(size=5),
+      axis.text=element_text(size=8),
       panel.border=element_blank(),
       plot.title=element_text(hjust=0),
       strip.text=element_text(hjust=0),
       panel.margin.x=unit(0.5, "cm"),
-      panel.margin.y=unit(0.5, "cm"),
-      legend.title=element_text(size=6),
-      legend.title.align=1,
-      legend.text=element_text(size=6),
-      legend.position="bottom",
-      legend.key.size=unit(0.2, "cm"),
-      legend.key.width=unit(0.45, "cm")
+      panel.margin.y=unit(0.1, "cm"),
+      legend.title = element_text( size = 8),
+      legend.title.align = 0,
+      legend.text = element_text(size = 6),
+      legend.position ="bottom",
+      legend.key.size = unit(0.5, "cm"),
+      legend.key.width = unit(1, "cm")
     )
 }
 
-oncat_subject_physics <- ggplotGrob(means_by_rater %>% 
-  oncat_subject_heatmap("Physics"))
+oncat_subject_physics <- means_by_rater %>% 
+  oncat_subject_heatmap("Physics")
 
-oncat_subject_calculus <- ggplotGrob(means_by_rater %>% 
+oncat_subject_calculus <- means_by_rater %>% 
   oncat_subject_heatmap("Calculus") +
   theme(
     strip.text.y = element_blank(),
     axis.text.y = element_blank()
-  ))
+  )
 
-oncat_s_heatmap <- cbind(oncat_subject_physics, oncat_subject_calculus, size = "first")
+
+grid_arrange_shared_legend <- function(...) {
+  
+  
+  strip_guide <- function(x){
+    
+    keep <- !grepl("guide-box", x$layout$name)
+    
+    x$grobs <- x$grobs[keep]
+    x$layout <- x$layout[keep, ]
+    
+    return(x)
+  }
+  
+  
+  plots <- list(...)
+  
+  plots <- lapply(plots, ggplotGrob)
+  
+  id.legend <- grep("guide", plots[[1]]$layout$name)
+  
+  legend <- plots[[1]][["grobs"]][[id.legend]]
+  
+  lheight <- max(legend$height)
+  
+  plots <- lapply(plots, strip_guide)
+  
+  plots <- do.call(cbind, c(plots,size = "first"))
+  
+  grid.arrange(plots,
+               legend,
+               nrow = 2,
+               heights = unit.c(unit(1, "npc") - lheight, lheight))
+  
+}
+
+
+grid_arrange_shared_legend(oncat_subject_physics,oncat_subject_calculus)
 
 pdf("ONCAT Subject Heatmap.pdf", width = 16, height = 10)
 grid.newpage()

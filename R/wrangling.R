@@ -4,6 +4,7 @@ library(magrittr)
 library(dplyr)
 library(tidyr)
 
+
 type_knowledge <- c("Factual",
                       "Conceptual",
                       "Computational",
@@ -46,26 +47,26 @@ novelty <- c(
 
 # Calculus and Physics rater data
 
-rater_data <- import(list.files(data.dir, pattern = "ONCAT_", full.names = TRUE), sheet = "Master") %>% 
+rater_data <- import(list.files("./data", pattern = "ONCAT_", full.names = TRUE), sheet = "Master") %>% 
   set_colnames(c("school","subject", "content", "question", "rater","cognitive process","type of knowledge","transfer","depth of knowledge","interdependence")) %>% 
   mutate(type = ifelse(school %in% c("Seneca","Mohawk","Algonquin","Sheridan","SLC"), "College", "University")) %>% 
   select(school,type,subject, content, question, rater,everything()) 
 
-# Set factor levels for each
-rater_data$`cognitive process` %<>%
-  factor(c(1:6), cognitive_process)
-
-rater_data$`type of knowledge` %<>%
-  factor(c(1:5), type_knowledge)
-
-rater_data$transfer %<>%
-  factor(c(1:5), transfer)
-
-rater_data$`depth of knowledge` %<>%
-  factor(c(1:3), depth_knowledge)
-
-rater_data$interdependence %<>%
-  factor(c(1:3), interdependence)
+# # Set factor levels for each
+# rater_data$`cognitive process` %<>%
+#   factor(c(1:6), cognitive_process)
+# 
+# rater_data$`type of knowledge` %<>%
+#   factor(c(1:5), type_knowledge)
+# 
+# rater_data$transfer %<>%
+#   factor(c(1:5), transfer)
+# 
+# rater_data$`depth of knowledge` %<>%
+#   factor(c(1:3), depth_knowledge)
+# 
+# rater_data$interdependence %<>%
+#   factor(c(1:3), interdependence)
 
 
 # Compute data by gropings
