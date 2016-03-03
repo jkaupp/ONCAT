@@ -1,22 +1,16 @@
 library(dplyr)
 library(magrittr)
 library(tidyr)
+library(stringr)
+library(viridis)
 library(ggplot2)
 library(ggthemes)
 library(GGally)
-library(extrafont)
-library(htmlwidgets)
-library(sunburstR)
 library(treemap)
-library(stringr)
+library(scales)
 library(grid)
 library(gridExtra)
-library(beeswarm)
-library(viridis)
-library(gridExtra)
-library(scales)
 library(gtable)
-library(stringr)
 
 # Framework Treemaps ----
 vplayout <- function(x, y) viewport(width=25, height=14, layout.pos.row = x, layout.pos.col = y)
@@ -287,7 +281,7 @@ ggsave("Content Histograms.png", scale = 1.5, width = 25)
 
 ## By Subject
 
-q <- means_by_rater %>% 
+oncat_pc_subject <- means_by_rater %>% 
   ungroup %>% 
   mutate_each(funs(jitter), -subject:-question) %>% 
   select(subject,type,school,question, everything()) %>% 
@@ -295,18 +289,16 @@ q <- means_by_rater %>%
   ggparcoord(columns = c(5:ncol(.)), scale = "globalminmax", alphaLines = 0.2, mapping = aes(color = factor(type)))
 
 
-q$data %<>% 
+oncat_pc_subject$data %<>% 
   mutate(type = factor(type, c(1,2), c("College","University")),
         subject = factor(subject, c(1,2), c("Calculus", "Physics")))
 
-q + facet_wrap(~subject) +
+oncat_pc_subject + facet_wrap(~subject) +
   labs(x = "", y = "", title = "") +
   scale_color_manual(name = "", values = c(wesanderson::wes_palette("Zissou",5)[1], wesanderson::wes_palette("Zissou",5)[5])) +
   scale_x_discrete(expand = c(0.1,0), labels = function(x) str_wrap(str_to_title(x), width = 8)) +
   theme_tufte(base_size = 14) +
-  theme(#legend.position = "none",
-        axis.ticks.y = element_blank(),
-        #axis.text.y = element_blank(),
+  theme(axis.ticks.y = element_blank(),
         strip.text = element_text(size = 16),
         strip.text.y = element_text(angle = 180))
 
@@ -314,25 +306,24 @@ ggsave("ONCAT PC - By Subject.png", width = 16, height = 10)
 
 # By Subject and Type
 
-q <- means_by_rater %>% 
+oncat_pc_subject_type <- means_by_rater %>% 
   ungroup %>% 
   mutate_each(funs(jitter), -subject:-question) %>% 
   select(subject,type,school,question, everything()) %>% 
   as.data.frame() %>% 
   ggparcoord(columns = c(5:ncol(.)), scale = "globalminmax", alphaLines = 0.2, mapping = aes(color = factor(type)))
 
-q$data %<>% 
+oncat_pc_subject_type$data %<>% 
   mutate(type = factor(type, c(1,2), c("College","University")),
          subject = factor(subject, c(1,2), c("Calculus", "Physics")))
 
-q + facet_grid(subject ~ type, switch = "y") +
+oncat_pc_subject_type + facet_grid(subject ~ type, switch = "y") +
   labs(x = "", y = "", title = "") +
   scale_color_manual(values = c(wesanderson::wes_palette("Zissou",5)[1], wesanderson::wes_palette("Zissou",5)[5])) +
   scale_x_discrete(expand = c(0.1,0), labels = function(x) str_wrap(str_to_title(x), width = 8)) +
   theme_tufte(base_size = 14) +
   theme(legend.position = "none",
         axis.ticks.y = element_blank(),
-        #axis.text.y = element_blank(),
         strip.text = element_text(size = 16),
         strip.text.y = element_text(angle = 180))
 
