@@ -4,13 +4,6 @@ library(magrittr)
 library(dplyr)
 library(tidyr)
 
-read.files <- function(sheet)
-{
-  read_excel(data.file, sheet) %>% 
-    set_colnames(., tolower(names(.))) %>% 
-    mutate(school = sheet)
-}
-
 type_knowledge <- c("Factual",
                       "Conceptual",
                       "Computational",
@@ -50,36 +43,47 @@ novelty <- c(
   "New problems"
 )
 
-data.dir <- "~/ownCloud/Projects/R/Projects/ONCAT/data/"
 
-data.file <- paste0(data.dir,"Calculus Outcomes.xlsx")
+# Calculus and Physics rater data
 
-sheets <- excel_sheets(data.file)
+rater_data <- import(list.files(data.dir, pattern = "ONCAT_", full.names = TRUE), sheet = "Master") %>% 
+  set_colnames(c("school","subject", "content", "question", "rater","cognitive process","type of knowledge","transfer","depth of knowledge","interdependence")) %>% 
+  mutate(type = ifelse(school %in% c("Seneca","Mohawk","Algonquin","Sheridan","SLC"), "College", "University")) %>% 
+  select(school,type,subject, content, question, rater,everything()) 
 
-oncat.data <- lapply(sheets, read.files) %>% 
-  set_names(., sheets) %>% 
-  bind_rows() %>% 
-  mutate(type = ifelse(grepl("Seneca|Mohawk",school),"College","University")) %>% 
-  separate(school,c("school","course"), sep = " ")
-  
-
-oncat.data$`cognitive process` %<>%
+# Set factor levels for each
+rater_data$`cognitive process` %<>%
   factor(c(1:6), cognitive_process)
 
-oncat.data$`type of knowledge` %<>%
+rater_data$`type of knowledge` %<>%
   factor(c(1:5), type_knowledge)
 
-oncat.data$transfer %<>%
+rater_data$transfer %<>%
   factor(c(1:5), transfer)
 
-oncat.data$`depth of knowledge` %<>%
+rater_data$`depth of knowledge` %<>%
   factor(c(1:3), depth_knowledge)
 
-oncat.data$interdependence %<>%
+rater_data$interdependence %<>%
   factor(c(1:3), interdependence)
 
-oncat.data$novelty %<>%
-  factor(c(1:3), novelty)
+
+# Compute data by gropings
+means_by_rater <- rater_data %>% 
+  group_by(subject, type, school, question) %>% 
+  summarize_each(funs(mean), `cognitive process`:`interdependence`)
+   
+means_by_type <- rater_data %>% 
+  group_by(subject, type) %>% 
+  summarize_each(funs(mean), `cognitive process`:`interdependence`)
+
+means_by_school <- rater_data %>% 
+  group_by(subject, school) %>% 
+  summarize_each(funs(mean), `cognitive process`:`interdependence`)
+
+means_by_school_content <- rater_data %>% 
+  group_by(subject, school, content) %>% 
+  summarize_each(funs(mean), `cognitive process`:`interdependence`)
 
 
 
