@@ -6,11 +6,16 @@ library(viridis)
 library(ggplot2)
 library(ggthemes)
 library(GGally)
+library(ggrepel)
 library(treemap)
 library(scales)
 library(grid)
 library(gridExtra)
 library(gtable)
+
+
+
+
 
 # Framework Treemaps ----
 vplayout <- function(x, y) viewport(width=25, height=14, layout.pos.row = x, layout.pos.col = y)
@@ -77,35 +82,205 @@ dev.off()
 
 # ONCAT framework bubble ----
 
-oncat_framework_scatter <- function(df) {
-  
-  df %>% 
-    mutate_each(funs(as.numeric),-school, -type, -subject) %>%
+oncat_framework_scatter <- function(df, selection, save = FALSE, subtitle = NULL, filename = NULL) {
+
+  plot_data <- ungroup(df) %>%
+    select(school, type, question, subject, transfer, `cognitive process`, contains(selection)) %>% 
+    mutate_each(funs(as.numeric),-question, -school, -type, -subject, -transfer, -`cognitive process`) %>%
     gather(
-      variable, value, -school, -type, -subject, -rater, -transfer,-`cognitive process`, -`type of knowledge`
+      variable, value, -school, -type, -question, -subject, -transfer, -`cognitive process` 
     ) %>%
-    filter(!is.na(value)) %>% 
-    arrange(value, variable, `cognitive process`, transfer) %>%
-    ggplot(aes(x = transfer, y = `cognitive process`)) +
-    geom_point(
-      aes(fill = factor(value)), size = 10, pch = 21, color = "white", show.legend = TRUE, position =
-        position_jitter()
-    ) +
-    facet_grid(type~variable, drop = FALSE) +
-    xlab("\nTransfer") +
-    ylab("Cognitive Process\n") +
-    scale_y_discrete(limits = cognitive_process, labels = function(x) str_wrap(x, width = 10)) +
-    scale_x_discrete(limits = transfer, labels = function(x) str_wrap(x, width = 10)) +
-    guides(fill = guide_legend(title = "Scale Level")) +
-    scale_fill_viridis(labels = depth_knowledge, discrete = TRUE) +
-    #scale_fill_brewer(type = "seq", palette = "YlOrRd", labels = depth_knowledge) +
-    theme_tufte(base_size = 12) +
-    theme(axis.text.x = element_text(angle = 0),
-          strip.text.y = element_text(angle = 0),
-          panel.border = element_rect(fill = NA, color = "grey50"),
-          legend.position = "bottom")
+   mutate(variable = str_to_title(variable)) %>% 
+   arrange(value, variable, `cognitive process`, transfer)
+  
+  if (nrow(plot_data) > 0) {
+    value_factor <- get(tolower(unique(plot_data$variable)))
+    
+    plot_data$value <-
+      factor(plot_data$value, c(1:length(value_factor)), value_factor)
+  } 
+  
+  if(grepl("Physics",unique(plot_data$subject))){
+    transfer_labs <- c(
+      "Knowledge of physics",
+      "Apply in a disciplinary context",
+      "Apply in other engineering contexts",
+      "Apply to real-world predictable contexts",
+      "Apply to real-world unpredictable contexts"
+    )
+  } else {
+    transfer_labs <- c(
+      "Mathematical knowledge",
+      "Apply in a disciplinary context",
+      "Apply in other engineering contexts",
+      "Apply to real-world predictable contexts",
+      "Apply to real-world unpredictable contexts"
+    )
+  }
+  
+  
+  if(is.null(subtitle))
+  {
+    subtitle <- plot_data$type
+  }
+  
+  if(is.null(filename))
+  {
+    filename <- paste(plot_data$school, plot_data$subject, plot_data$variable, sep = "_")
+  }
+ 
+  
+  if(nrow(plot_data) > 0){
+    
+  of_plot <- ggplot(plot_data, aes(x = transfer, y =`cognitive process`)) +
+    geom_point(aes(fill = value), size = 8, pch = 21, color = "white", alpha = 0.7, show.legend = TRUE, position = position_jitter()) + 
+    geom_vline(xintercept=seq(1.5, length(transfer)-0.5, 1), lwd=0.1, colour="grey80") +
+    geom_hline(yintercept=seq(1.5, length(`cognitive process`)-0.5, 1), lwd=0.1, colour="grey80") +
+    labs(x = NULL, y = NULL, title = unique(plot_data$variable), subtitle = subtitle) +
+    scale_y_discrete(limits = `cognitive process`, labels = function(x) str_wrap(x, width = 10), drop = FALSE) +
+    scale_x_discrete(limits = transfer, labels = str_wrap(transfer_labs, width = 15), drop = FALSE) + 
+    scale_fill_viridis("Color Key",labels = str_wrap(value_factor,60), discrete = TRUE, drop=FALSE) +
+    theme(
+      text = element_text(family = "Calibri", size = 20, color = "black"),
+      legend.position = c(0.75,0.7),
+      legend.key = element_blank(),
+      legend.background = element_rect(fill = "white"),
+      strip.text.y = element_text(angle = 180),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, color = "black"),
+      axis.text.y = element_text(color = "black"),
+      axis.ticks.y = element_blank(),
+      axis.ticks.x = element_line(colour = "grey80", size = 0.1),
+      panel.margin.y = unit(1, "lines"),
+      axis.line = element_line(),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      strip.text = element_text(hjust = 0, face = "bold"),
+      strip.background = element_blank(),
+      plot.background = element_blank(),
+      plot.caption = element_text(size = 10, face = "italic"))
+  } else {
+    
+    plot_data  <- mutate(plot_data, value = ifelse(is.na(value),0,value))
+    
+    of_plot <- ggplot(plot_data, aes(x = transfer, y =`cognitive process`)) +
+      geom_point(alpha = 0) + 
+      annotate("text", label = "No Ratings Provided", x =3, y = 3, size = 10, family = "Calibri") +
+      geom_vline(xintercept=seq(1.5, length(transfer)-0.5, 1), lwd=0.1, colour="grey80") +
+      geom_hline(yintercept=seq(1.5, length(`cognitive process`)-0.5, 1), lwd=0.1, colour="grey80") +
+      labs(x = NULL, y = NULL, title = unique(plot_data$variable), subtitle = subtitle) +
+      scale_y_discrete(limits = `cognitive process`, labels = function(x) str_wrap(x, width = 10), drop = FALSE) +
+      scale_x_discrete(limits = transfer, labels = str_wrap(transfer_labs, width = 15), drop = FALSE) + 
+      scale_fill_viridis("Color Key",labels = str_wrap(value_factor,60), discrete = TRUE, drop=FALSE) +
+      theme(
+        text = element_text(family = "Calibri", size = 20, color = "black"),
+        legend.position = c(0.75,0.7),
+        legend.key = element_blank(),
+        legend.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 180),
+        axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, color = "black"),
+        axis.text.y = element_text(color = "black"),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_line(colour = "grey80", size = 0.1),
+        panel.margin.y = unit(1, "lines"),
+        axis.line = element_line(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        strip.text = element_text(hjust = 0, face = "bold"),
+        strip.background = element_blank(),
+        plot.background = element_blank(),
+        plot.caption = element_text(size = 10, face = "italic"))
+    
+  }
+
+  
+  if(save){
+   ggsave(plot = of_plot, filename = paste0(filename,".png"),device = "png",  width = 15, height =12, dpi = 300)}
+  else(of_plot)
+  
 }
 
+merged_plot <- function(x, save = FALSE){
+  
+  grid.save <- function(x)
+  {
+    png(file_name, width = 1200, height = 900)
+    grid.newpage()
+    grid.draw(x)
+    dev.off()
+  }
+  
+  
+  file_name <- sprintf("%s %s.png", unique(x$subject), unique(x$school))
+  
+  plots <- list(x$depth_plots + theme(axis.text.x = element_blank()),
+                x$novelty_plots + theme(axis.text = element_blank()),
+                x$scaffolding_plots,
+                x$communication_plots + theme(axis.text.y = element_blank()))
+  
+  p <- grid.arrange(grobs=plots,nrow=2, left = textGrob("Cognitive Process", rot = 90,gp = gpar(fontsize = 20)), bottom = textGrob("Transfer", gp = gpar(fontsize = 20)))
+  
+  if(save) {
+    grid.save(p)
+  }
+  
+  return(p)
+}
+
+
+
+# All plots ---
+framework_plots <- med_by_rater %>% 
+  group_by(type, subject) %>% 
+  select(-interdependence) %>% 
+  do(plots = oncat_framework_scatter(.,"depth",TRUE,NULL,filename = paste("Depth of Analysis",.$type,.$subject)))
+
+survey_plots <- survey_scatter %>% 
+  left_join(schools) %>% 
+  rename(school_ =  school,
+         school = alias) %>% 
+  group_by(subject, school, type) %>% 
+  do(depth_plots = oncat_framework_scatter(.,"depth",FALSE,.$school),
+     novelty_plots = oncat_framework_scatter(.,"novelty",FALSE,.$school),
+     scaffolding_plots = oncat_framework_scatter(.,"scaffolding",FALSE,.$school),
+     communication_plots = oncat_framework_scatter(.,"communication",FALSE,.$school)
+     ) 
+
+
+merged_plot <- survey_plots %>% 
+  rowwise() %>% 
+  do(plots = merged_plot(., save = TRUE))
+
+
+png("Report Plots - 2x2 Framework College Calculus.png", width = 1200, height = 900)
+grid.newpage()
+grid.draw(merged_plot$plots[[1]])
+dev.off()
+
+png("Report Pots - 2x2 Framework College Physics.png", width = 1200, height = 900)
+grid.newpage()
+grid.draw(merged_plot$plots[[2]])
+dev.off()
+
+png("Report Plots - 2x2 Framework University Calculus.png", width = 1200, height = 900)
+grid.newpage()
+grid.draw(merged_plot$plots[[3]])
+dev.off()
+
+png("Report Pots - 2x2 Framework University Physics.png", width = 1200, height = 900)
+grid.newpage()
+grid.draw(merged_plot$plots[[4]])
+dev.off()
+
+
+
+df <- filter(survey_scatter, type == "College", subject == "Calculus", school == "SLC")
+
+oncat_framework_scatter(df,selection)
+
+
+ggsave("Physics Framework Bubble - Depth of Knowledge.png", width = 15, height = 12, dpi = 300)
+
+# Rater Comparisons ----
 calc_1 <- ggplotGrob(rater_data %>%
   filter(subject == "Calculus", rater == 1) %>% 
   oncat_framework_scatter() +
@@ -235,34 +410,36 @@ oncat.data %>%
       facet_wrap(~type)
   }    
 
-# Framework Bubble ----
+# Framework Question Bubble ----
 
-rater_data %>%
-# select(-1:-2) %>% 
-  mutate_each(funs(as.numeric),-school, -type, -subject) %>%
+df %>%
+  mutate_each(funs(as.numeric),-question, -school, -type, -subject, -transfer, -`cognitive process`) %>%
   gather(
-    variable, value, -school, -type, -subject, -rater, -transfer,-`cognitive process`, -`type of knowledge`
+    variable, value, -school, -type, -question, -subject, -transfer, -`cognitive process`, -`type of knowledge`
   ) %>%
   filter(!is.na(value)) %>% 
-  arrange(value, variable, `cognitive process`, transfer) %>% 
-  ggplot(aes(x = transfer, y = `cognitive process`)) +
-  geom_count(aes(fill = factor(value)), color = "black", pch = 21, position = position_jitter()) +
-  #geom_text(stat = "sum", aes(label = ..n..), size = 4, position = position_jitter()) +
-  facet_grid(type~variable, drop = FALSE) +
+  mutate(variable = str_to_title(variable)) %>% 
+  arrange(value, variable, `cognitive process`, transfer) %>%
+  ggplot(aes(x = transfer, y =`cognitive process`)) +
+  geom_label_repel(aes(label = question, fill = factor(value)), alpha = 0.5, color = "white", show.legend = FALSE, segment.size = 0) +
+  #geom_count(aes(fill = factor(value)), color = "black", pch = 21) +
+  facet_grid(type~variable) +
   xlab("\nTransfer") +
   ylab("Cognitive Process\n") +
-  scale_y_discrete(limits = cognitive_process, labels = function(x) str_wrap(x, width = 10)) +
-  scale_x_discrete(limits = transfer, labels = function(x) str_wrap(x, width = 10)) +
-  guides(fill = guide_legend(title = "Scale Level"), size = guide_legend(title = "Size")) +
-  scale_fill_brewer(type = "seq", palette = "YlOrRd") +
-  scale_size_continuous(range = c(10,20), limits = c(1,200), breaks = c(1,50,100,150,200)) +
-  theme_tufte(base_size = 20) +
+  scale_y_discrete(limits = cognitive_process, labels = function(x) str_wrap(x, width = 10), drop = FALSE) +
+  scale_x_discrete(limits = transfer, labels = function(x) str_wrap(x, width = 10), drop = FALSE) +
+  scale_size(breaks = c(1,2,5,10,15)) +
+  guides(fill = guide_legend(title = "Type of Knowledge"), size = guide_legend(title = "Number of Questions Rated")) +
+  scale_fill_viridis(labels = depth_knowledge, discrete = TRUE, drop=FALSE) +
+  #scale_color_viridis(labels = depth_knowledge, discrete = TRUE, drop=FALSE) +
+  theme_tufte(base_size = 12) +
   theme(axis.text.x = element_text(angle = 0),
         strip.text.y = element_text(angle = 0),
         panel.border = element_rect(fill = NA, color = "grey50"),
         legend.position = "bottom")
+  
 
-ggsave("3x Framework Bubble.png", width = 26, height = 10, dpi = 300)
+ggsave("Seneca Calculus Quesiton Bubble.png", width = 26, height = 10, dpi = 300)
 
 # Content Histograms ----
 
@@ -281,9 +458,10 @@ ggsave("Content Histograms.png", scale = 1.5, width = 25)
 
 ## By Subject
 
-oncat_pc_subject <- means_by_rater %>% 
+oncat_pc_subject <- med_by_rater %>% 
   ungroup %>% 
-  mutate_each(funs(jitter), -subject:-question) %>% 
+  mutate_each(funs(as.numeric), -subject:-content) %>% 
+  mutate_each(funs(jitter), -subject:-content) %>% 
   select(subject,type,school,question, everything()) %>% 
   as.data.frame() %>% 
   ggparcoord(columns = c(5:ncol(.)), scale = "globalminmax", alphaLines = 0.2, mapping = aes(color = factor(type)))
@@ -306,9 +484,10 @@ ggsave("ONCAT PC - By Subject.png", width = 16, height = 10)
 
 # By Subject and Type
 
-oncat_pc_subject_type <- means_by_rater %>% 
+oncat_pc_subject_type <- med_by_rater %>% 
   ungroup %>% 
-  mutate_each(funs(jitter), -subject:-question) %>% 
+  mutate_each(funs(as.numeric), -subject:-content) %>% 
+  mutate_each(funs(jitter), -subject:-content) %>% 
   select(subject,type,school,question, everything()) %>% 
   as.data.frame() %>% 
   ggparcoord(columns = c(5:ncol(.)), scale = "globalminmax", alphaLines = 0.2, mapping = aes(color = factor(type)))
@@ -408,57 +587,82 @@ dev.off()
 
 # Content Heatmap by Subject and School ----
 
-schools <- c("Algonquin", "Mohawk", "Seneca", "Sheridan", "SLC", "Guelph", 
-             "McMaster", "Queens", "Ryerson", "UofT", "Waterloo")
-
 oncat_content_heatmap <- function(df, v_subject)  
 {
  data <- df %>%
     group_by(subject, school, content) %>% 
     tally %>% 
-    ungroup %>% 
-    complete(school, nesting(subject, content),  fill = list(n = NA)) %>% 
+    mutate(percent = n/sum(n)) %>% 
     mutate(content = ifelse(grepl("\\wC circuit", content), str_replace(content, "(\\w)C circuit", "\\1C Circuit"), str_to_title(content))) %>% 
-    filter(subject == v_subject) %>% 
-    mutate(school = gdata::reorder.factor(factor(school), new.order = schools))
+    filter(subject == v_subject) %>%
+    ungroup %>%
+    complete(school = schools$school, subject, content,  fill = list(n = 0, percent = 0)) %>%
+    inner_join(pruned_schools, by = "school") 
+ 
+  if (v_subject == "Physics")
+  {
+    data <- mutate(data, n = ifelse(!(school %in% c("Seneca","SLC","McMaster","Queens","Ryerson","Waterloo")), NA, n))
+    
+    data <- mutate(data, percent = ifelse(!(school %in% c("Seneca","SLC","McMaster","Queens","Ryerson","Waterloo")), NA, percent))
+  }
+ 
+  if (v_subject == "Calculus") 
+    {
+    data <- mutate(data, n = ifelse(!(school %in% c("Algonquin", "Conestoga", "Mohawk", 
+                                                    "Seneca", "Sheridan", "SLC", "Guelph", "McMaster", "Queens", 
+                                                    "UofT", "Waterloo")), NA, n))
+    
+    data <- mutate(data, percent = ifelse(!(school %in% c("Algonquin", "Conestoga", "Mohawk", 
+                                                          "Seneca", "Sheridan", "SLC", "Guelph", "McMaster", "Queens", 
+                                                          "UofT", "Waterloo")), NA, percent))
+  }
+ 
+ #data <- filter(data, !(alias %in% c("College 2", "University 4")))
   
-  ggplot(data, aes(y = school, x = content, fill = n)) +
-    geom_tile(color = "white", size = 0.1) +
-    facet_wrap(~subject, drop = FALSE) +
-    scale_fill_viridis(name = "# of Questions in Content Area", na.value = "grey95", limits = c(0,50)) +
-    labs(x = NULL, y = NULL, title = NULL) +
+  ggplot(data, aes(y = alias, x = content, fill = percent)) +
+    geom_tile(color = "black", size = 0.1) +
+    #facet_wrap(~subject, drop = FALSE) +
+    scale_fill_gradientn(name = "% of Questions per Exam", na.value = "white", limits = c(0,1), colors = c("grey95", wesanderson::wes_palette("Zissou")), labels = percent) +
+    #scale_fill_viridis(name = "% of Questions per Exam", na.value = "grey90", limits = c(0,1), labels = function(x) percent(x)) +
+    labs(x = NULL, y = NULL, title = data$subject, subtitle = "White Fill = Not Assessed") +
+    scale_y_discrete(limits = pruned_schools$alias) +
+    #scale_y_discrete(limits = schools$alias[!grepl("College 2|University 4", schools$alias)]) +
     coord_equal() +
     theme_tufte() +
-    theme(
+    theme(text = element_text(size = 22, color = "black", family = "Calibri"),
       strip.text.y = element_text(angle = 180),
       axis.title.y = element_text(angle = 0),
-      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.subtitle = element_text(size = 18, face = "italic"),
+      axis.text.x = element_text(angle = -45, hjust = 0),
       axis.ticks=element_blank(),
-      axis.text=element_text(size=8),
+      axis.text=element_text(size=14),
       panel.border=element_blank(),
       plot.title=element_text(hjust=0),
       strip.text=element_text(hjust=0),
       panel.margin.x=unit(0.5, "cm"),
       panel.margin.y=unit(0.5, "cm"),
-      legend.title=element_text(size=6),
+      legend.title=element_text(size=14),
       legend.title.align=1,
-      legend.text=element_text(size=6),
+      legend.text=element_text(size=10),
       legend.position="bottom",
-      legend.key.size=unit(0.2, "cm"),
-      legend.key.width=unit(0.45, "cm")
+      legend.key.size=unit(0.5, "cm"),
+      legend.key.width=unit(0.9, "cm")
     )
 }
 
 
-physics_content_heatmap <- ggplotGrob(rater_data %>% 
-  filter(rater ==  1) %>% 
-  oncat_content_heatmap("Physics"))
+physics_content_heatmap <- med_by_rater %>%
+  oncat_content_heatmap("Physics") 
   
-calculus_content_heatmap <- ggplotGrob(rater_data %>% 
-  filter(rater ==  1) %>% 
-  oncat_content_heatmap("Calculus") + 
-    theme(axis.text.y = element_blank()))
+calculus_content_heatmap <- med_by_rater %>%
+  oncat_content_heatmap("Calculus")
   
+HH::export.eps("Physics Content Heatmap (Publication).eps", width = 16, height = 10)
+
+ggsave(plot = physics_content_heatmap, "Physics Content Heatmap (Publication).png",  dpi = 300, width = 16, height = 10)
+
+ggsave(plot = calculus_content_heatmap, "Calculus Content Heatmap (Publication).png",  dpi = 300, width = 16, height = 10)
+
 q <- cbind(physics_content_heatmap, calculus_content_heatmap, size = "first")
 
 pdf("Content Area Heatmap by Subject.pdf", width = 16, height = 10)
@@ -473,7 +677,7 @@ oncat_subject_heatmap <- function(df, v_subject) {
   data <- df %>%
     select(-question) %>% 
     mutate_each(funs(round(.,0)), `cognitive process`:interdependence) %>% 
-    gather(variable, value, `type of knowledge`, `depth of knowledge`, `interdependence`) %>% 
+    gather(variable, value, `type of knowledge`, `depth of analysis`, `interdependence`) %>% 
     group_by(subject, type, `cognitive process`, transfer, variable, value) %>% 
     tally %>% 
     ungroup %>% 
@@ -509,7 +713,7 @@ oncat_subject_heatmap <- function(df, v_subject) {
     )
 }
 
-oncat_subject_physics <- means_by_rater %>% 
+oncat_subject_physics <- med_by_rater %>% 
   oncat_subject_heatmap("Physics")
 
 oncat_subject_calculus <- means_by_rater %>% 
