@@ -70,8 +70,4 @@ oncat_4by_scatter <- function(df, selection, save = FALSE, subtitle = NULL, file
   
 }
 
-
-survey_plots <- survey_scatter %>% 
-  mutate_each(funs(as.numeric),`depth of analysis`:scaffolding) %>% 
-  gather(variable,value,`depth of analysis`:scaffolding) %>% 
  

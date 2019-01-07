@@ -76,11 +76,11 @@ framework_maps <- function(df) {
   
 }
 
-pdf("Framework Maps.pdf", width=11, height=8.5)
+pdf("Framework Maps.pdf", width =11, height=8.5)
 framework_maps(oncat.data)
 dev.off()
 
-# ONCAT framework bubble ----
+# ONCAT framework scatter ----
 
 oncat_framework_scatter <- function(df, selection, save = FALSE, subtitle = NULL, filename = NULL) {
 
@@ -121,7 +121,7 @@ oncat_framework_scatter <- function(df, selection, save = FALSE, subtitle = NULL
   
   if(is.null(subtitle))
   {
-    subtitle <- plot_data$type
+    subtitle <- unique(plot_data$type)
   }
   
   if(is.null(filename))
@@ -133,24 +133,26 @@ oncat_framework_scatter <- function(df, selection, save = FALSE, subtitle = NULL
   if(nrow(plot_data) > 0){
     
   of_plot <- ggplot(plot_data, aes(x = transfer, y =`cognitive process`)) +
-    geom_point(aes(fill = value), size = 8, pch = 21, color = "white", alpha = 0.7, show.legend = TRUE, position = position_jitter()) + 
+    geom_point(aes(fill = value), size = 3, pch = 21, color = "white", alpha = 0.7, show.legend = TRUE, position = position_jitter()) + 
     geom_vline(xintercept=seq(1.5, length(transfer)-0.5, 1), lwd=0.1, colour="grey80") +
     geom_hline(yintercept=seq(1.5, length(`cognitive process`)-0.5, 1), lwd=0.1, colour="grey80") +
-    labs(x = NULL, y = NULL, title = unique(plot_data$variable), subtitle = subtitle) +
+    labs(x = NULL, y = NULL, title = unique(plot_data$variable), subtitle = NULL) +
     scale_y_discrete(limits = `cognitive process`, labels = function(x) str_wrap(x, width = 10), drop = FALSE) +
     scale_x_discrete(limits = transfer, labels = str_wrap(transfer_labs, width = 15), drop = FALSE) + 
-    scale_fill_viridis("Color Key",labels = str_wrap(value_factor,60), discrete = TRUE, drop=FALSE) +
+    scale_fill_viridis("Color Key",labels = value_factor, discrete = TRUE, drop=FALSE) +
     theme(
-      text = element_text(family = "Calibri", size = 20, color = "black"),
+      text = element_text(family = "Calibri", size = 12, color = "black"),
       legend.position = c(0.75,0.7),
+      legend.text = element_text(family = "Calibri", size = 8, color = "black"),
       legend.key = element_blank(),
+      legend.key.size = unit(0.3, "cm"),
       legend.background = element_rect(fill = "white"),
       strip.text.y = element_text(angle = 180),
       axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, color = "black"),
       axis.text.y = element_text(color = "black"),
       axis.ticks.y = element_blank(),
-      axis.ticks.x = element_line(colour = "grey80", size = 0.1),
-      panel.margin.y = unit(1, "lines"),
+      axis.ticks.x = element_blank(),
+      panel.spacing.y = unit(1, "lines"),
       axis.line = element_line(),
       panel.border = element_blank(),
       panel.background = element_blank(),
@@ -172,7 +174,7 @@ oncat_framework_scatter <- function(df, selection, save = FALSE, subtitle = NULL
       scale_x_discrete(limits = transfer, labels = str_wrap(transfer_labs, width = 15), drop = FALSE) + 
       scale_fill_viridis("Color Key",labels = str_wrap(value_factor,60), discrete = TRUE, drop=FALSE) +
       theme(
-        text = element_text(family = "Calibri", size = 20, color = "black"),
+        text = element_text(family = "Calibri", size = 10, color = "black"),
         legend.position = c(0.75,0.7),
         legend.key = element_blank(),
         legend.background = element_rect(fill = "white"),
@@ -194,7 +196,7 @@ oncat_framework_scatter <- function(df, selection, save = FALSE, subtitle = NULL
 
   
   if(save){
-   ggsave(plot = of_plot, filename = paste0(filename,".png"),device = "png",  width = 15, height =12, dpi = 300)}
+   ggsave(plot = of_plot, filename = paste0(filename,".png"), device = "png", units = "cm", width = 10, height = 8, dpi = 300)}
   else(of_plot)
   
 }
@@ -203,24 +205,25 @@ merged_plot <- function(x, save = FALSE){
   
   grid.save <- function(x)
   {
-    png(file_name, width = 1200, height = 900)
+    png(file_name, units = "cm", width = 10, height = 10, res = 100)
     grid.newpage()
     grid.draw(x)
     dev.off()
   }
   
   
-  file_name <- sprintf("%s %s.png", unique(x$subject), unique(x$school))
+  file_name <- sprintf("%s-%s.png", unique(x$subject), unique(x$type))
   
   plots <- list(x$depth_plots + theme(axis.text.x = element_blank()),
-                x$novelty_plots + theme(axis.text = element_blank()),
+                x$novelty_plots + theme(axis.text.x = element_blank(),
+                                        axis.text.y = element_blank()),
                 x$scaffolding_plots,
                 x$communication_plots + theme(axis.text.y = element_blank()))
   
-  p <- grid.arrange(grobs=plots,nrow=2, left = textGrob("Cognitive Process", rot = 90,gp = gpar(fontsize = 20)), bottom = textGrob("Transfer", gp = gpar(fontsize = 20)))
+  p <- arrangeGrob(grobs = plots, nrow=2, left = textGrob("Cognitive Process", rot = 90,gp = gpar(fontsize = 10)), bottom = textGrob("Transfer", gp = gpar(fontsize = 10)))
   
   if(save) {
-    grid.save(p)
+    ggsave(file_name, p,units = "cm", height = 10, width = 25)
   }
   
   return(p)
@@ -232,13 +235,13 @@ merged_plot <- function(x, save = FALSE){
 framework_plots <- med_by_rater %>% 
   group_by(type, subject) %>% 
   select(-interdependence) %>% 
-  do(plots = oncat_framework_scatter(.,"depth",TRUE,NULL,filename = paste("Depth of Analysis",.$type,.$subject)))
+  do(plots = oncat_framework_scatter(.,"depth",TRUE,NULL, filename = paste("Depth of Analysis",.$type,.$subject)))
 
 survey_plots <- survey_scatter %>% 
   left_join(schools) %>% 
   rename(school_ =  school,
          school = alias) %>% 
-  group_by(subject, school, type) %>% 
+  group_by(subject, type) %>% 
   do(depth_plots = oncat_framework_scatter(.,"depth",FALSE,.$school),
      novelty_plots = oncat_framework_scatter(.,"novelty",FALSE,.$school),
      scaffolding_plots = oncat_framework_scatter(.,"scaffolding",FALSE,.$school),
@@ -246,7 +249,8 @@ survey_plots <- survey_scatter %>%
      ) 
 
 
-merged_plot <- survey_plots %>% 
+merged_plot <- survey_plots %>%
+  filter(subject == "Physics") %>% 
   rowwise() %>% 
   do(plots = merged_plot(., save = TRUE))
 
@@ -272,13 +276,6 @@ grid.draw(merged_plot$plots[[4]])
 dev.off()
 
 
-
-df <- filter(survey_scatter, type == "College", subject == "Calculus", school == "SLC")
-
-oncat_framework_scatter(df,selection)
-
-
-ggsave("Physics Framework Bubble - Depth of Knowledge.png", width = 15, height = 12, dpi = 300)
 
 # Rater Comparisons ----
 calc_1 <- ggplotGrob(rater_data %>%
@@ -364,51 +361,7 @@ grid.newpage()
 grid.draw(physics)
 dev.off()
 
-# Framework Radar ----
-library(ggradar)
 
-rater_data %>% 
-  mutate_each(funs(as.numeric), -school,-subject,-rater,-type) %>% 
-  filter(subject == "Calculus") %>% 
-  mutate(group = as.character(rater)) %>% 
-  select(-rater) %>% 
-  select(group, `cognitive process`:interdependence) %>% 
-  mutate_each(funs(rescale), -group) %>% 
-  group_by(group) %>% 
-  summarize_each(funs(mean)) %>% 
-  ggradar()
-  
-
-ggradar(mtcars_radar) 
-
-# Framework Coxcomb ----
-colors<-wesanderson::wes_palette("FantasticFox") %>% 
-  readhex(.,class = 'HCL')
-
-oncat.data %>% 
-  group_by(type, school) %>% 
-  mutate_each(funs(as.numeric), -school, -type) %>% 
-  # summarize_each(funs(mean), -school, -type) %>% 
-  gather(variable,value,-school,-type,-Application,-`Cognitive process`) %>% 
-  group_by(type, variable, value) %>% 
-  tally %>% 
-  mutate(value = factor(value, levels=c(1,2,3))) %>% 
-  mutate(freq = n/sum(n)*100) %>%
-  arrange(freq) %>% 
-  {
-    ggplot(.,aes(x = variable, y=freq)) +
-      geom_bar(data = subset(., value==1),
-               aes(fill = variable), colour = "#FFFFF3", width = 1
-      ) +
-      geom_bar(data = subset(., value==2),
-               aes(fill = variable), colour = "#FFFFF3", width = 1
-      ) +
-      geom_bar(data = subset(., value==3),
-               aes(fill = variable), colour = "#FFFFF3", width = 1
-      ) +
-      coord_polar(theta = "x", start = 1)  +
-      facet_wrap(~type)
-  }    
 
 # Framework Question Bubble ----
 

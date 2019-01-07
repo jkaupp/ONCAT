@@ -31,7 +31,7 @@ plot_data <- design_data %>%
 para_plot <- ggparcoord(plot_data,  columns = c(4:ncol(plot_data)), scale = "globalminmax", alphaLines = 0.5)
 
 para_plot$data <- para_plot$data %>% 
-   mutate(school = factor(school, c(1:4), c("College 4","University 2","University 3","University 4")))
+   mutate(school = factor(school, c(1:4), c("Technology 4","Engineering 2","Engineering 3","Engineering 4")))
          
 
 disciplinarity  <- c("Disciplinary: Requires knowledge of one specific engineering discipline",
@@ -51,10 +51,9 @@ design <- c("Identify and select and implement solutions to engineering problems
 
 pc_plot <- para_plot +
   facet_wrap(~school, nrow = 1) +
-  scale_color_manual(values=wesanderson::wes_palette("Darjeeling",5)[-1]) +
   scale_y_continuous(breaks = seq(1,3,1)) +
   scale_x_discrete(labels = function(x) str_wrap(str_to_title(x),15)) +
-  labs(x = NULL, y = NULL, title = "Design Activity Ratings") +
+  labs(x = NULL, y = NULL, title = NULL) +
   theme_jk(base_size = 20, base_family = "Calibri") + 
   theme(
     strip.text.x = element_text(size = 16),
@@ -73,7 +72,7 @@ label_plot <- ggplot(labels, aes(x = x,y = y)) +
   theme_jk(grid = FALSE,base_size = 20, base_family = "Calibri") 
 
 
-png("Design Rating Parallel Coordinates Rubric.png", width = 1400)
+png("Design Rating Parallel Coordinates.png", width = 1400)
 pc_plot
 dev.off()
 
@@ -129,15 +128,15 @@ heat_data <- design_data %>%
   ungroup %>% 
   mutate(type = "Project") %>% 
   mutate(flag = ifelse(n>0,1,0)) %>% 
-  mutate(school = ifelse(school == "Conestoga", "College 1", school)) %>% 
-  mutate(school = ifelse(school == "Guelph", "University 1", school)) %>% 
-  mutate(school = ifelse(school == "Humber", "College 2", school)) %>% 
-  mutate(school = ifelse(school == "Mohawk", "College 3", school)) %>% 
-  mutate(school = ifelse(school == "Queen's", "University 2", school)) %>% 
-  mutate(school = ifelse(school == "Ryerson", "University 3", school)) %>% 
-  mutate(school = ifelse(school == "Seneca", "College 4", school)) %>% 
-  mutate(school = ifelse(school == "Sheridan", "College 5", school)) %>% 
-  mutate(school = ifelse(school == "Umanitoba", "University 4", school)) 
+  mutate(school = ifelse(school == "Conestoga", "Technology 1", school)) %>% 
+  mutate(school = ifelse(school == "Guelph", "Engineering 1", school)) %>% 
+  mutate(school = ifelse(school == "Humber", "Technology 2", school)) %>% 
+  mutate(school = ifelse(school == "Mohawk", "Technology 3", school)) %>% 
+  mutate(school = ifelse(school == "Queen's", "Engineering 2", school)) %>% 
+  mutate(school = ifelse(school == "Ryerson", "Engineering 3", school)) %>% 
+  mutate(school = ifelse(school == "Seneca", "Technology 4", school)) %>% 
+  mutate(school = ifelse(school == "Sheridan", "Technology 5", school)) %>% 
+  mutate(school = ifelse(school == "Umanitoba", "Engineering 4", school)) 
 
   # mutate(variable = factor(variable,variable))
 
@@ -172,15 +171,15 @@ outcomes_heat_data <- design_outcomes_data %>%
   rename(variable = topics) %>% 
   mutate(flag = ifelse(n>0,1,0)) %>% 
   ungroup %>% 
-  mutate(school = ifelse(school == "Conestoga", "College 1", school)) %>% 
-  mutate(school = ifelse(school == "Guelph", "University 1", school)) %>% 
-  mutate(school = ifelse(school == "Humber", "College 2", school)) %>% 
-  mutate(school = ifelse(school == "Mohawk", "College 3", school)) %>% 
-  mutate(school = ifelse(school == "Queen's", "University 2", school)) %>% 
-  mutate(school = ifelse(school == "Ryerson", "University 3", school)) %>% 
-  mutate(school = ifelse(school == "Seneca", "College 4", school)) %>% 
-  mutate(school = ifelse(school == "Sheridan", "College 5", school)) %>% 
-  mutate(school = ifelse(school == "Umanitoba", "University 4", school)) 
+  mutate(school = ifelse(school == "Conestoga", "Technology 1", school)) %>% 
+  mutate(school = ifelse(school == "Guelph", "Engineering 1", school)) %>% 
+  mutate(school = ifelse(school == "Humber", "Technology 2", school)) %>% 
+  mutate(school = ifelse(school == "Mohawk", "Technology 3", school)) %>% 
+  mutate(school = ifelse(school == "Queen's", "Engineering 2", school)) %>% 
+  mutate(school = ifelse(school == "Ryerson", "Engineering 3", school)) %>% 
+  mutate(school = ifelse(school == "Seneca", "Technology 4", school)) %>% 
+  mutate(school = ifelse(school == "Sheridan", "Technology 5", school)) %>% 
+  mutate(school = ifelse(school == "Umanitoba", "Engineering 4", school)) 
 # %>% 
 #   mutate(topics = factor(topics,topics))
  
